@@ -21,6 +21,13 @@ export function extractTitle(path: string): string {
 }
 
 export function getPageTitle(): string {
+  // Use document.title and strip the trailing site name (e.g. "PageName - GROWI")
+  const docTitle = document.title;
+  if (docTitle) {
+    // Remove trailing " - SiteName" or " | SiteName"
+    const cleaned = docTitle.replace(/\s*[-|][^-|]*$/, '').trim();
+    if (cleaned && !/^[0-9a-f]{24}$/i.test(cleaned)) return cleaned;
+  }
   return extractTitle(window.location.pathname);
 }
 
