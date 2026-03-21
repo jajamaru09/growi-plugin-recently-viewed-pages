@@ -21,11 +21,6 @@ export function extractTitle(path: string): string {
 }
 
 export function getPageTitle(): string {
-  const docTitle = document.title;
-  if (docTitle) {
-    const cleaned = docTitle.replace(/\s*[-|]\s*[^-|]+$/, '').trim();
-    if (cleaned) return cleaned;
-  }
   return extractTitle(window.location.pathname);
 }
 

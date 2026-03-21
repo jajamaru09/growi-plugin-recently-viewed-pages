@@ -15,6 +15,10 @@
   cursor: pointer;
 }
 
+.grw-recently-viewed-item h6 {
+  font-size: 14px;
+}
+
 .grw-recently-viewed-empty {
   color: #999;
   text-align: center;

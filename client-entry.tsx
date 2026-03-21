@@ -6,13 +6,6 @@ let isActive = false;
 let abortController: AbortController | null = null;
 
 function handleButtonClick(): void {
-  if (isActive) {
-    setButtonActive(false);
-    hidePanel();
-    isActive = false;
-    return;
-  }
-
   isActive = true;
   setButtonActive(true);
   showPanel();
