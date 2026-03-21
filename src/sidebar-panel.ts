@@ -13,13 +13,14 @@ function safeDecodeURI(seg: string): string {
   }
 }
 
-function buildFullPath(path: string): string {
+function buildFullPath(path: string, title: string): string {
   const segments = path.split('/').filter(Boolean);
   let currentPath = '';
-  const links = segments.map((seg) => {
+  const links = segments.map((seg, i) => {
     currentPath += '/' + seg;
-    const decoded = safeDecodeURI(seg);
-    return `<a class="grw-rv-link" data-rv-href="${escapeHtml(currentPath)}">${escapeHtml(decoded)}</a>`;
+    // Use stored title for the last segment (avoids showing raw pageId)
+    const label = (i === segments.length - 1) ? title : safeDecodeURI(seg);
+    return `<a class="grw-rv-link" data-rv-href="${escapeHtml(currentPath)}">${escapeHtml(label)}</a>`;
   });
 
   const homeLink = `<a class="grw-rv-link" data-rv-href="/"><span class="material-symbols-outlined" style="font-size:inherit;vertical-align:middle">home</span></a>`;
@@ -29,7 +30,7 @@ function buildFullPath(path: string): string {
 }
 
 function renderItem(item: ViewedPage): string {
-  const fullPath = buildFullPath(item.path);
+  const fullPath = buildFullPath(item.path, item.title);
   const relativeTime = formatRelativeTime(item.viewedAt);
 
   return `
