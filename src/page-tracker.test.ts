@@ -31,6 +31,13 @@ describe('isExcludedPath', () => {
     expect(isExcludedPath('/user/jun/メモ')).toBe(false);
     expect(isExcludedPath('/999_その他/Claudeコラム')).toBe(false);
   });
+
+  it('does not false-positive on paths starting with excluded prefixes', () => {
+    expect(isExcludedPath('/meeting-notes')).toBe(false);
+    expect(isExcludedPath('/trash-talk')).toBe(false);
+    expect(isExcludedPath('/media/images')).toBe(false);
+    expect(isExcludedPath('/administrator')).toBe(false);
+  });
 });
 
 describe('extractTitle', () => {

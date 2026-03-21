@@ -4,6 +4,7 @@ import { startTracking, stopTracking } from './src/page-tracker';
 
 let isActive = false;
 let observer: MutationObserver | null = null;
+let savedSidebarContent: string | null = null;
 
 function getSidebarContents(): Element | null {
   return document.querySelector('.grw-sidebar-contents');
@@ -14,12 +15,18 @@ function handleButtonClick(): void {
   if (!container) return;
 
   if (isActive) {
-    // Deactivate — let Growi restore its default panel
+    // Deactivate — restore Growi's native panel content
     setButtonActive(false);
     isActive = false;
+    if (savedSidebarContent !== null) {
+      container.innerHTML = savedSidebarContent;
+      savedSidebarContent = null;
+    }
     return;
   }
 
+  // Save current sidebar content before replacing
+  savedSidebarContent = container.innerHTML;
   isActive = true;
   setButtonActive(true);
   showPanel(container);
@@ -38,6 +45,7 @@ function setupSidebarIntegration(): void {
       if (clickedBtn && clickedBtn.id !== 'recently-viewed' && isActive) {
         isActive = false;
         setButtonActive(false);
+        savedSidebarContent = null;
       }
     });
   }

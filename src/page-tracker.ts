@@ -4,7 +4,10 @@ const EXCLUDED_PREFIXES = ['/_api/', '/_search', '/admin', '/me', '/trash'];
 
 export function isExcludedPath(path: string): boolean {
   if (path === '/') return true;
-  return EXCLUDED_PREFIXES.some((prefix) => path.startsWith(prefix));
+  return EXCLUDED_PREFIXES.some((prefix) => {
+    if (prefix.endsWith('/')) return path.startsWith(prefix);
+    return path === prefix || path.startsWith(prefix + '/');
+  });
 }
 
 export function extractTitle(path: string): string {
