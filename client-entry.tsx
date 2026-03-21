@@ -18,6 +18,8 @@ function setupSidebar(): void {
   // Listen for clicks on other sidebar nav buttons to deactivate our panel
   const navContainer = btn.parentElement;
   if (navContainer) {
+    // Use capture phase so we restore .grw-sidebar-contents BEFORE
+    // Growi's React handlers process the click
     navContainer.addEventListener('click', (e) => {
       const target = e.target as HTMLElement;
       const clickedBtn = target.closest('button');
@@ -26,7 +28,7 @@ function setupSidebar(): void {
         setButtonActive(false);
         hidePanel();
       }
-    });
+    }, true);
   }
 }
 
