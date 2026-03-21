@@ -15,21 +15,17 @@ function setupSidebar(): void {
   const btn = ensureSidebarButton(handleButtonClick);
   if (!btn) return;
 
-  // Listen for clicks on other sidebar nav buttons to deactivate our panel
-  const navContainer = btn.parentElement;
-  if (navContainer) {
-    // Use capture phase so we restore .grw-sidebar-contents BEFORE
-    // Growi's React handlers process the click
-    navContainer.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      const clickedBtn = target.closest('button');
-      if (clickedBtn && clickedBtn.id !== 'recently-viewed' && isActive) {
-        isActive = false;
-        setButtonActive(false);
-        hidePanel();
-      }
-    }, true);
-  }
+  // Deactivate our panel when clicking anywhere outside our button/panel.
+  // Use capture phase so .grw-sidebar-contents is restored BEFORE
+  // Growi's React handlers process the click.
+  document.addEventListener('click', (e) => {
+    if (!isActive) return;
+    const target = e.target as HTMLElement;
+    if (target.closest('#recently-viewed') || target.closest('#grw-recently-viewed-panel')) return;
+    isActive = false;
+    setButtonActive(false);
+    hidePanel();
+  }, true);
 }
 
 function onNavigate(): void {
