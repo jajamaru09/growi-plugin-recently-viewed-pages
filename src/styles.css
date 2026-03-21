@@ -11,6 +11,10 @@
   text-decoration: underline;
 }
 
+.grw-rv-link {
+  cursor: pointer;
+}
+
 .grw-recently-viewed-empty {
   color: #999;
   text-align: center;
