@@ -47,26 +47,8 @@ function onNavigate(): void {
   }
 }
 
-function waitForSidebar(): void {
-  const navContainer = document.querySelector('.grw-sidebar-nav-primary-container');
-  if (navContainer && document.getElementById('in-app-notification')) {
-    setupSidebar();
-    return;
-  }
-
-  // Wait for Growi's React to render the sidebar
-  const observer = new MutationObserver((_mutations, obs) => {
-    const nav = document.querySelector('.grw-sidebar-nav-primary-container');
-    if (nav && document.getElementById('in-app-notification')) {
-      obs.disconnect();
-      setupSidebar();
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-}
-
 const activate = (): void => {
-  waitForSidebar();
+  setupSidebar();
   startTracking();
 
   // Re-ensure button on every navigation (handles React re-renders)
