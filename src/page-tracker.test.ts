@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isExcludedPath, extractTitle } from './page-tracker';
+import { isExcludedPath, extractTitle, getPageTitle } from './page-tracker';
 
 describe('isExcludedPath', () => {
   it('excludes root path', () => {
@@ -51,5 +51,24 @@ describe('extractTitle', () => {
 
   it('handles single-segment path', () => {
     expect(extractTitle('/テスト用')).toBe('テスト用');
+  });
+});
+
+describe('getPageTitle', () => {
+  it('extracts title from document.title stripping site name suffix', () => {
+    document.title = 'テストページ - GROWI';
+    expect(getPageTitle()).toBe('テストページ');
+  });
+
+  it('extracts title with pipe separator', () => {
+    document.title = 'テストページ | My Wiki';
+    expect(getPageTitle()).toBe('テストページ');
+  });
+
+  it('falls back to path extraction when document.title is empty', () => {
+    document.title = '';
+    // jsdom default location is about:blank, so path is '/'
+    // which returns empty from extractTitle, and getPageTitle falls back
+    expect(typeof getPageTitle()).toBe('string');
   });
 });

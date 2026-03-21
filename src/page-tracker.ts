@@ -20,10 +20,22 @@ export function extractTitle(path: string): string {
   }
 }
 
+export function getPageTitle(): string {
+  // Growi sets document.title to "PageTitle - SiteName" or "PageTitle | GROWI"
+  const docTitle = document.title;
+  if (docTitle) {
+    // Strip common suffixes: " - SiteName", " | SiteName"
+    const cleaned = docTitle.replace(/\s*[-|]\s*[^-|]+$/, '').trim();
+    if (cleaned) return cleaned;
+  }
+  // Fallback to path extraction
+  return extractTitle(window.location.pathname);
+}
+
 function trackCurrentPage(): void {
   const path = window.location.pathname;
   if (isExcludedPath(path)) return;
-  const title = extractTitle(path);
+  const title = getPageTitle();
   recordPageView(path, title);
 }
 
@@ -32,13 +44,22 @@ let lastPath = '';
 
 export function startTracking(): void {
   lastPath = window.location.pathname;
-  trackCurrentPage();
-  window.addEventListener('popstate', trackCurrentPage);
+  // Delay first recording slightly so document.title is set
+  setTimeout(trackCurrentPage, 500);
+
+  // Listen for popstate (back/forward navigation)
+  window.addEventListener('popstate', () => {
+    // Delay to let Growi update document.title after navigation
+    setTimeout(trackCurrentPage, 500);
+  });
+
+  // Poll for pushState navigations (Next.js router)
   pollInterval = setInterval(() => {
     const currentPath = window.location.pathname;
     if (currentPath !== lastPath) {
       lastPath = currentPath;
-      trackCurrentPage();
+      // Delay to let Growi update document.title
+      setTimeout(trackCurrentPage, 500);
     }
   }, 1000);
 }

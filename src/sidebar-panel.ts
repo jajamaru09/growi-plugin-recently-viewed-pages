@@ -3,6 +3,16 @@ import { formatRelativeTime } from './relative-time';
 import { escapeHtml } from './html-escape';
 import './styles.css';
 
+const PANEL_ID = 'grw-recently-viewed-panel';
+
+function safeDecodeURI(seg: string): string {
+  try {
+    return decodeURIComponent(seg);
+  } catch {
+    return seg;
+  }
+}
+
 function buildPathHierarchy(path: string): string {
   const segments = path.split('/').filter(Boolean);
   if (segments.length <= 1) return '';
@@ -10,12 +20,12 @@ function buildPathHierarchy(path: string): string {
   const parentSegments = segments.slice(0, -1);
   let currentPath = '';
   const links = parentSegments.map((seg) => {
-    currentPath += '/' + encodeURIComponent(decodeURIComponent(seg));
-    const decoded = decodeURIComponent(seg);
-    return `<a class="page-segment" href="${escapeHtml(currentPath)}">${escapeHtml(decoded)}</a>`;
+    currentPath += '/' + seg;
+    const decoded = safeDecodeURI(seg);
+    return `<a class="page-segment grw-rv-link" data-rv-href="${escapeHtml(currentPath)}">${escapeHtml(decoded)}</a>`;
   });
 
-  return `<span class="path-segment"><a href="/"><span class="material-symbols-outlined" style="font-size:inherit;vertical-align:middle">home</span><span class="separator" style="margin:0 0.2em">/</span></a></span>${links.join('<span class="separator" style="margin:0 0.2em">/</span>')}`;
+  return `<span class="path-segment"><a class="grw-rv-link" data-rv-href="/"><span class="material-symbols-outlined" style="font-size:inherit;vertical-align:middle">home</span><span class="separator" style="margin:0 0.2em">/</span></a></span>${links.join('<span class="separator" style="margin:0 0.2em">/</span>')}`;
 }
 
 function renderItem(item: ViewedPage): string {
@@ -29,7 +39,7 @@ function renderItem(item: ViewedPage): string {
           <div class="row gy-1">
             ${pathHierarchy ? `<div class="col-12"><div style="font-size:0.85em;color:#888">${pathHierarchy}</div></div>` : ''}
             <h6 class="col-12 d-flex align-items-center mb-0">
-              <a class="page-segment" href="${escapeHtml(item.path)}">${escapeHtml(item.title)}</a>
+              <a class="page-segment grw-rv-link" data-rv-href="${escapeHtml(item.path)}">${escapeHtml(item.title)}</a>
             </h6>
             <div class="col-12">
               <div class="d-flex justify-content-end">
@@ -80,17 +90,83 @@ export function renderPanel(): string {
   `;
 }
 
-export function showPanel(container: Element): void {
-  const refresh = () => showPanel(container);
+function navigateGrowiStyle(path: string): void {
+  // Try Next.js router for SPA navigation (Growi uses Next.js)
+  try {
+    const nextRouter = (window as any).next?.router;
+    if (nextRouter && typeof nextRouter.push === 'function') {
+      nextRouter.push(path);
+      return;
+    }
+  } catch {
+    // fallback below
+  }
 
-  container.innerHTML = renderPanel();
+  // Fallback: standard navigation
+  window.location.href = path;
+}
 
-  // Attach clear button handler
-  const clearBtn = container.querySelector('.grw-btn-clear-history');
-  if (clearBtn) {
-    clearBtn.addEventListener('click', () => {
+function getOrCreatePanel(): HTMLElement {
+  let panel = document.getElementById(PANEL_ID);
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = PANEL_ID;
+    panel.className = 'grw-recently-viewed-panel d-none';
+    panel.style.cssText = 'height:100%;overflow-y:auto;';
+
+    // Insert as sibling of .grw-sidebar-contents inside the scrollable area
+    const sidebarContents = document.querySelector('.grw-sidebar-contents');
+    if (sidebarContents && sidebarContents.parentElement) {
+      sidebarContents.parentElement.appendChild(panel);
+    }
+  }
+  return panel;
+}
+
+export function showPanel(): void {
+  const panel = getOrCreatePanel();
+  const sidebarContents = document.querySelector('.grw-sidebar-contents');
+
+  // Render content
+  panel.innerHTML = renderPanel();
+
+  // Show our panel, hide Growi's panel
+  panel.classList.remove('d-none');
+  if (sidebarContents) {
+    sidebarContents.classList.add('d-none');
+  }
+
+  // Event delegation for all interactions
+  panel.onclick = (e) => {
+    const target = e.target as HTMLElement;
+
+    // Handle clear button
+    if (target.closest('.grw-btn-clear-history')) {
       clearHistory();
-      refresh();
-    });
+      showPanel(); // refresh
+      return;
+    }
+
+    // Handle navigation links
+    const link = target.closest('.grw-rv-link') as HTMLElement | null;
+    if (link) {
+      e.preventDefault();
+      const href = link.getAttribute('data-rv-href');
+      if (href) {
+        navigateGrowiStyle(href);
+      }
+    }
+  };
+}
+
+export function hidePanel(): void {
+  const panel = document.getElementById(PANEL_ID);
+  const sidebarContents = document.querySelector('.grw-sidebar-contents');
+
+  if (panel) {
+    panel.classList.add('d-none');
+  }
+  if (sidebarContents) {
+    sidebarContents.classList.remove('d-none');
   }
 }

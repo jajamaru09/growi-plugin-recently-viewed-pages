@@ -1,35 +1,22 @@
-import { injectSidebarButton, setButtonActive } from './src/sidebar-button';
-import { showPanel } from './src/sidebar-panel';
+import { injectSidebarButton, setButtonActive, cleanupButtonObserver } from './src/sidebar-button';
+import { showPanel, hidePanel } from './src/sidebar-panel';
 import { startTracking, stopTracking } from './src/page-tracker';
 
 let isActive = false;
 let observer: MutationObserver | null = null;
-let savedSidebarContent: string | null = null;
-
-function getSidebarContents(): Element | null {
-  return document.querySelector('.grw-sidebar-contents');
-}
 
 function handleButtonClick(): void {
-  const container = getSidebarContents();
-  if (!container) return;
-
   if (isActive) {
-    // Deactivate — restore Growi's native panel content
+    // Deactivate — show Growi's native panel, hide ours
     setButtonActive(false);
+    hidePanel();
     isActive = false;
-    if (savedSidebarContent !== null) {
-      container.innerHTML = savedSidebarContent;
-      savedSidebarContent = null;
-    }
     return;
   }
 
-  // Save current sidebar content before replacing
-  savedSidebarContent = container.innerHTML;
   isActive = true;
   setButtonActive(true);
-  showPanel(container);
+  showPanel();
 }
 
 function setupSidebarIntegration(): void {
@@ -45,7 +32,7 @@ function setupSidebarIntegration(): void {
       if (clickedBtn && clickedBtn.id !== 'recently-viewed' && isActive) {
         isActive = false;
         setButtonActive(false);
-        savedSidebarContent = null;
+        hidePanel();
       }
     });
   }
@@ -79,6 +66,7 @@ const activate = (): void => {
 
 const deactivate = (): void => {
   stopTracking();
+  cleanupButtonObserver();
   if (observer) {
     observer.disconnect();
     observer = null;

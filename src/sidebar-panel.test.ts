@@ -17,7 +17,7 @@ describe('sidebar-panel', () => {
     recordPageView('/test/page', 'page');
     const html = renderPanel();
     expect(html).toContain('page');
-    expect(html).toContain('href="/test/page"');
+    expect(html).toContain('data-rv-href="/test/page"');
   });
 
   it('renders path hierarchy for nested pages', () => {
