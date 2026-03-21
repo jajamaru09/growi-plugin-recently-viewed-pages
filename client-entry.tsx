@@ -5,7 +5,10 @@ import { startTracking, stopTracking } from './src/page-tracker';
 let abortController: AbortController | null = null;
 
 function setupSidebar(): void {
-  ensureSidebarButton(() => openModal());
+  if (!ensureSidebarButton(() => openModal())) {
+    // Notification button may not be rendered yet (e.g. on root page)
+    setTimeout(() => ensureSidebarButton(() => openModal()), 1000);
+  }
 }
 
 const activate = (): void => {
