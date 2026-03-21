@@ -1,13 +1,12 @@
-import { injectSidebarButton, setButtonActive, cleanupButtonObserver } from './src/sidebar-button';
+import { ensureSidebarButton, setButtonActive } from './src/sidebar-button';
 import { showPanel, hidePanel } from './src/sidebar-panel';
 import { startTracking, stopTracking } from './src/page-tracker';
 
 let isActive = false;
-let observer: MutationObserver | null = null;
+let abortController: AbortController | null = null;
 
 function handleButtonClick(): void {
   if (isActive) {
-    // Deactivate — show Growi's native panel, hide ours
     setButtonActive(false);
     hidePanel();
     isActive = false;
@@ -19,8 +18,8 @@ function handleButtonClick(): void {
   showPanel();
 }
 
-function setupSidebarIntegration(): void {
-  const btn = injectSidebarButton(handleButtonClick);
+function setupSidebar(): void {
+  const btn = ensureSidebarButton(handleButtonClick);
   if (!btn) return;
 
   // Listen for clicks on other sidebar nav buttons to deactivate our panel
@@ -38,38 +37,54 @@ function setupSidebarIntegration(): void {
   }
 }
 
+function onNavigate(): void {
+  // Re-ensure button exists after each navigation (React may have re-rendered)
+  ensureSidebarButton(handleButtonClick);
+
+  // If our panel is active, refresh it to show updated history
+  if (isActive) {
+    showPanel();
+  }
+}
+
 function waitForSidebar(): void {
-  // Check if sidebar already exists
   const navContainer = document.querySelector('.grw-sidebar-nav-primary-container');
   if (navContainer && document.getElementById('in-app-notification')) {
-    setupSidebarIntegration();
+    setupSidebar();
     return;
   }
 
-  // Otherwise, wait for it with MutationObserver
-  observer = new MutationObserver((_mutations, obs) => {
+  // Wait for Growi's React to render the sidebar
+  const observer = new MutationObserver((_mutations, obs) => {
     const nav = document.querySelector('.grw-sidebar-nav-primary-container');
     if (nav && document.getElementById('in-app-notification')) {
       obs.disconnect();
-      observer = null;
-      setupSidebarIntegration();
+      setupSidebar();
     }
   });
-
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
 const activate = (): void => {
   waitForSidebar();
   startTracking();
+
+  // Re-ensure button on every navigation (handles React re-renders)
+  if (window.navigation) {
+    abortController = new AbortController();
+    window.navigation.addEventListener(
+      'navigatesuccess',
+      () => onNavigate(),
+      { signal: abortController.signal },
+    );
+  }
 };
 
 const deactivate = (): void => {
   stopTracking();
-  cleanupButtonObserver();
-  if (observer) {
-    observer.disconnect();
-    observer = null;
+  if (abortController) {
+    abortController.abort();
+    abortController = null;
   }
 };
 

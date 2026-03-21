@@ -21,14 +21,11 @@ export function extractTitle(path: string): string {
 }
 
 export function getPageTitle(): string {
-  // Growi sets document.title to "PageTitle - SiteName" or "PageTitle | GROWI"
   const docTitle = document.title;
   if (docTitle) {
-    // Strip common suffixes: " - SiteName", " | SiteName"
     const cleaned = docTitle.replace(/\s*[-|]\s*[^-|]+$/, '').trim();
     if (cleaned) return cleaned;
   }
-  // Fallback to path extraction
   return extractTitle(window.location.pathname);
 }
 
@@ -39,35 +36,28 @@ function trackCurrentPage(): void {
   recordPageView(path, title);
 }
 
-let pollInterval: ReturnType<typeof setInterval> | null = null;
-let lastPath = '';
+let abortController: AbortController | null = null;
 
 export function startTracking(): void {
-  lastPath = window.location.pathname;
-  // Delay first recording slightly so document.title is set
+  // Record current page after short delay (let Growi set document.title)
   setTimeout(trackCurrentPage, 500);
 
-  // Listen for popstate (back/forward navigation)
-  window.addEventListener('popstate', () => {
-    // Delay to let Growi update document.title after navigation
-    setTimeout(trackCurrentPage, 500);
-  });
-
-  // Poll for pushState navigations (Next.js router)
-  pollInterval = setInterval(() => {
-    const currentPath = window.location.pathname;
-    if (currentPath !== lastPath) {
-      lastPath = currentPath;
-      // Delay to let Growi update document.title
-      setTimeout(trackCurrentPage, 500);
-    }
-  }, 1000);
+  // Use Navigation API for SPA navigation detection
+  if (window.navigation) {
+    abortController = new AbortController();
+    window.navigation.addEventListener(
+      'navigatesuccess',
+      () => {
+        setTimeout(trackCurrentPage, 500);
+      },
+      { signal: abortController.signal },
+    );
+  }
 }
 
 export function stopTracking(): void {
-  window.removeEventListener('popstate', trackCurrentPage);
-  if (pollInterval !== null) {
-    clearInterval(pollInterval);
-    pollInterval = null;
+  if (abortController) {
+    abortController.abort();
+    abortController = null;
   }
 }
