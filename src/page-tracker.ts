@@ -43,12 +43,11 @@ export function getPageTitle(): string {
 
 /**
  * Resolve the wiki-style path for the current page.
- * Tries multiple sources to avoid storing pageId-based URLs.
+ * If the URL is a pageId, fetches the real path from Growi API.
+ * Returns null if the path needs async resolution (caller should await resolveWikiPath instead).
  */
-export function getWikiPath(): string {
+function getWikiPathSync(): string | null {
   const urlPath = window.location.pathname;
-
-  // If URL path is already wiki-style (not a bare pageId), use it directly
   const segments = urlPath.split('/').filter(Boolean);
   const looksLikePageId = segments.length === 1 && isObjectId(segments[0]);
 
@@ -56,108 +55,42 @@ export function getWikiPath(): string {
     return urlPath;
   }
 
-  // Try to extract path from __NEXT_DATA__ (Growi uses Next.js)
-  try {
-    const nextData = (window as any).__NEXT_DATA__;
-    const page = nextData?.props?.pageServerSideProps?.currentPage;
-    if (page?.path && typeof page.path === 'string') {
-      return page.path;
-    }
-  } catch {
-    // ignore
-  }
-
-  // Try to extract from Growi's page header breadcrumb
-  try {
-    const pathNav = document.querySelector('.grw-page-path-nav');
-    if (pathNav) {
-      const links = pathNav.querySelectorAll('a[href]');
-      if (links.length > 0) {
-        const lastLink = links[links.length - 1] as HTMLAnchorElement;
-        const href = lastLink.getAttribute('href');
-        if (href && href.startsWith('/') && !isObjectId(href.replace('/', ''))) {
-          return href;
-        }
-      }
-    }
-  } catch {
-    // ignore
-  }
-
-  // Try to find page path from the page header h1
-  try {
-    const headerPath = document.querySelector('.grw-page-path-text-muted-container');
-    if (headerPath?.textContent) {
-      const text = headerPath.textContent.trim();
-      if (text.startsWith('/')) return text;
-    }
-  } catch {
-    // ignore
-  }
-
-  // Fallback: return URL path as-is
-  return urlPath;
+  // Needs async API call
+  return null;
 }
 
-function debugPageInfo(): void {
+/**
+ * Fetch wiki path from Growi API using pageId.
+ */
+async function fetchWikiPath(pageId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`/_api/v3/page?pageId=${pageId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const path = data?.page?.path;
+    if (path && typeof path === 'string') return path;
+  } catch {
+    // API unavailable
+  }
+  return null;
+}
+
+/**
+ * Resolve wiki-style path, using API if needed.
+ */
+async function resolveWikiPath(): Promise<string> {
   const urlPath = window.location.pathname;
-  console.group('[growi-rv-debug] Page Info');
-  console.log('URL pathname:', urlPath);
-  console.log('document.title:', document.title);
+  const syncPath = getWikiPathSync();
+  if (syncPath !== null) return syncPath;
 
-  // __NEXT_DATA__
-  try {
-    const nd = (window as any).__NEXT_DATA__;
-    console.log('__NEXT_DATA__:', JSON.parse(JSON.stringify(nd ?? null)));
-  } catch (e) {
-    console.log('__NEXT_DATA__: error reading', e);
-  }
-
-  // Growi global objects
-  for (const key of ['grpiPageData', 'growiRenderer', 'growiPlugin']) {
-    if ((window as any)[key]) console.log(`window.${key}:`, (window as any)[key]);
-  }
-
-  // DOM candidates for page path
-  const selectors = [
-    '.grw-page-path-nav',
-    '.grw-page-path-text-muted-container',
-    '.page-path',
-    '[data-page-path]',
-    '[data-page-id]',
-    '.grw-page-path-hierarchical-link',
-    '#grw-subnav-container',
-    '.grw-subnav',
-  ];
-  for (const sel of selectors) {
-    const el = document.querySelector(sel);
-    if (el) {
-      console.log(`DOM "${sel}":`, {
-        textContent: el.textContent?.trim().substring(0, 200),
-        innerHTML: el.innerHTML.substring(0, 500),
-        dataset: { ...(el as HTMLElement).dataset },
-      });
-    }
-  }
-
-  // Check all elements with data-page-* attributes
-  const dataPageEls = document.querySelectorAll('[data-page-path], [data-page-id]');
-  if (dataPageEls.length > 0) {
-    console.log('Elements with data-page-* attrs:');
-    dataPageEls.forEach((el) => {
-      console.log('  ', el.tagName, { ...(el as HTMLElement).dataset });
-    });
-  }
-
-  console.groupEnd();
+  // Extract pageId from URL
+  const pageId = urlPath.split('/').filter(Boolean)[0];
+  const apiPath = await fetchWikiPath(pageId);
+  return apiPath ?? urlPath;
 }
 
-function trackCurrentPage(): void {
-  // === DEBUG: remove after investigation ===
-  debugPageInfo();
-  // === END DEBUG ===
-
-  const path = getWikiPath();
+async function trackCurrentPage(): Promise<void> {
+  const path = await resolveWikiPath();
   if (isExcludedPath(path)) return;
   const title = getPageTitle();
   recordPageView(path, title);
