@@ -15,8 +15,13 @@
   cursor: pointer;
 }
 
-.grw-recently-viewed-item h6 {
+.grw-rv-full-path {
   font-size: 14px;
+}
+
+.grw-rv-sep {
+  margin: 0 0.2em;
+  color: #999;
 }
 
 .grw-recently-viewed-empty {
@@ -46,7 +51,7 @@
   color: var(--bs-body-color, #212529);
   border-radius: 8px;
   width: 90%;
-  max-width: 600px;
+  max-width: 900px;
   max-height: 70vh;
   display: flex;
   flex-direction: column;

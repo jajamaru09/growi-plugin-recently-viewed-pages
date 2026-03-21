@@ -13,42 +13,31 @@ function safeDecodeURI(seg: string): string {
   }
 }
 
-function buildPathHierarchy(path: string): string {
+function buildFullPath(path: string): string {
   const segments = path.split('/').filter(Boolean);
-  if (segments.length <= 1) return '';
-
-  const parentSegments = segments.slice(0, -1);
   let currentPath = '';
-  const links = parentSegments.map((seg) => {
+  const links = segments.map((seg) => {
     currentPath += '/' + seg;
     const decoded = safeDecodeURI(seg);
-    return `<a class="page-segment grw-rv-link" data-rv-href="${escapeHtml(currentPath)}">${escapeHtml(decoded)}</a>`;
+    return `<a class="grw-rv-link" data-rv-href="${escapeHtml(currentPath)}">${escapeHtml(decoded)}</a>`;
   });
 
-  return `<span class="path-segment"><a class="grw-rv-link" data-rv-href="/"><span class="material-symbols-outlined" style="font-size:inherit;vertical-align:middle">home</span><span class="separator" style="margin:0 0.2em">/</span></a></span>${links.join('<span class="separator" style="margin:0 0.2em">/</span>')}`;
+  const homeLink = `<a class="grw-rv-link" data-rv-href="/"><span class="material-symbols-outlined" style="font-size:inherit;vertical-align:middle">home</span></a>`;
+  const sep = '<span class="grw-rv-sep">/</span>';
+
+  return homeLink + sep + links.join(sep);
 }
 
 function renderItem(item: ViewedPage): string {
-  const pathHierarchy = buildPathHierarchy(item.path);
+  const fullPath = buildFullPath(item.path);
   const relativeTime = formatRelativeTime(item.viewedAt);
 
   return `
     <li class="list-group-item grw-recently-viewed-item py-2 px-0">
-      <div class="d-flex w-100">
-        <div class="flex-grow-1 ms-2">
-          <div class="row gy-1">
-            ${pathHierarchy ? `<div class="col-12"><div style="font-size:0.85em;color:#888">${pathHierarchy}</div></div>` : ''}
-            <h6 class="col-12 d-flex align-items-center mb-0">
-              <a class="page-segment grw-rv-link" data-rv-href="${escapeHtml(item.path)}">${escapeHtml(item.title)}</a>
-            </h6>
-            <div class="col-12">
-              <div class="d-flex justify-content-end">
-                <div class="grw-formatted-distance-date mt-auto">
-                  <span>${escapeHtml(relativeTime)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
+      <div class="d-flex align-items-baseline ms-2">
+        <div class="flex-grow-1 grw-rv-full-path">${fullPath}</div>
+        <div class="grw-formatted-distance-date ms-3 text-nowrap">
+          <span>${escapeHtml(relativeTime)}</span>
         </div>
       </div>
     </li>
