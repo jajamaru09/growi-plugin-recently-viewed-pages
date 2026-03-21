@@ -99,7 +99,64 @@ export function getWikiPath(): string {
   return urlPath;
 }
 
+function debugPageInfo(): void {
+  const urlPath = window.location.pathname;
+  console.group('[growi-rv-debug] Page Info');
+  console.log('URL pathname:', urlPath);
+  console.log('document.title:', document.title);
+
+  // __NEXT_DATA__
+  try {
+    const nd = (window as any).__NEXT_DATA__;
+    console.log('__NEXT_DATA__:', JSON.parse(JSON.stringify(nd ?? null)));
+  } catch (e) {
+    console.log('__NEXT_DATA__: error reading', e);
+  }
+
+  // Growi global objects
+  for (const key of ['grpiPageData', 'growiRenderer', 'growiPlugin']) {
+    if ((window as any)[key]) console.log(`window.${key}:`, (window as any)[key]);
+  }
+
+  // DOM candidates for page path
+  const selectors = [
+    '.grw-page-path-nav',
+    '.grw-page-path-text-muted-container',
+    '.page-path',
+    '[data-page-path]',
+    '[data-page-id]',
+    '.grw-page-path-hierarchical-link',
+    '#grw-subnav-container',
+    '.grw-subnav',
+  ];
+  for (const sel of selectors) {
+    const el = document.querySelector(sel);
+    if (el) {
+      console.log(`DOM "${sel}":`, {
+        textContent: el.textContent?.trim().substring(0, 200),
+        innerHTML: el.innerHTML.substring(0, 500),
+        dataset: { ...(el as HTMLElement).dataset },
+      });
+    }
+  }
+
+  // Check all elements with data-page-* attributes
+  const dataPageEls = document.querySelectorAll('[data-page-path], [data-page-id]');
+  if (dataPageEls.length > 0) {
+    console.log('Elements with data-page-* attrs:');
+    dataPageEls.forEach((el) => {
+      console.log('  ', el.tagName, { ...(el as HTMLElement).dataset });
+    });
+  }
+
+  console.groupEnd();
+}
+
 function trackCurrentPage(): void {
+  // === DEBUG: remove after investigation ===
+  debugPageInfo();
+  // === END DEBUG ===
+
   const path = getWikiPath();
   if (isExcludedPath(path)) return;
   const title = getPageTitle();
