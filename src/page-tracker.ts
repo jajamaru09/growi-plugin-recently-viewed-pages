@@ -2,6 +2,11 @@ import { recordPageView } from './storage';
 
 const EXCLUDED_PREFIXES = ['/_api/', '/_search', '/admin', '/me', '/trash'];
 
+/** Check if a path segment is a MongoDB ObjectId (24 hex chars) */
+function isObjectId(segment: string): boolean {
+  return /^[0-9a-f]{24}$/i.test(segment);
+}
+
 export function isExcludedPath(path: string): boolean {
   if (path === '/') return true;
   return EXCLUDED_PREFIXES.some((prefix) => {
@@ -36,8 +41,66 @@ export function getPageTitle(): string {
   return extractTitle(window.location.pathname);
 }
 
+/**
+ * Resolve the wiki-style path for the current page.
+ * Tries multiple sources to avoid storing pageId-based URLs.
+ */
+export function getWikiPath(): string {
+  const urlPath = window.location.pathname;
+
+  // If URL path is already wiki-style (not a bare pageId), use it directly
+  const segments = urlPath.split('/').filter(Boolean);
+  const looksLikePageId = segments.length === 1 && isObjectId(segments[0]);
+
+  if (!looksLikePageId) {
+    return urlPath;
+  }
+
+  // Try to extract path from __NEXT_DATA__ (Growi uses Next.js)
+  try {
+    const nextData = (window as any).__NEXT_DATA__;
+    const page = nextData?.props?.pageServerSideProps?.currentPage;
+    if (page?.path && typeof page.path === 'string') {
+      return page.path;
+    }
+  } catch {
+    // ignore
+  }
+
+  // Try to extract from Growi's page header breadcrumb
+  try {
+    const pathNav = document.querySelector('.grw-page-path-nav');
+    if (pathNav) {
+      const links = pathNav.querySelectorAll('a[href]');
+      if (links.length > 0) {
+        const lastLink = links[links.length - 1] as HTMLAnchorElement;
+        const href = lastLink.getAttribute('href');
+        if (href && href.startsWith('/') && !isObjectId(href.replace('/', ''))) {
+          return href;
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  // Try to find page path from the page header h1
+  try {
+    const headerPath = document.querySelector('.grw-page-path-text-muted-container');
+    if (headerPath?.textContent) {
+      const text = headerPath.textContent.trim();
+      if (text.startsWith('/')) return text;
+    }
+  } catch {
+    // ignore
+  }
+
+  // Fallback: return URL path as-is
+  return urlPath;
+}
+
 function trackCurrentPage(): void {
-  const path = window.location.pathname;
+  const path = getWikiPath();
   if (isExcludedPath(path)) return;
   const title = getPageTitle();
   recordPageView(path, title);
