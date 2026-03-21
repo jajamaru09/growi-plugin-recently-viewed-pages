@@ -21,12 +21,17 @@ export function extractTitle(path: string): string {
 }
 
 export function getPageTitle(): string {
-  // Use document.title and strip the trailing site name (e.g. "PageName - GROWI")
+  // Use document.title and strip the trailing site name (e.g. "PageName - Green-Server")
+  // Uses lastIndexOf instead of regex to handle hyphens in the site name
   const docTitle = document.title;
   if (docTitle) {
-    // Remove trailing " - SiteName" or " | SiteName"
-    const cleaned = docTitle.replace(/\s*[-|][^-|]*$/, '').trim();
-    if (cleaned && !/^[0-9a-f]{24}$/i.test(cleaned)) return cleaned;
+    const sepDash = docTitle.lastIndexOf(' - ');
+    const sepPipe = docTitle.lastIndexOf(' | ');
+    const sepPos = Math.max(sepDash, sepPipe);
+    if (sepPos > 0) {
+      const cleaned = docTitle.substring(0, sepPos).trim();
+      if (cleaned && !/^[0-9a-f]{24}$/i.test(cleaned)) return cleaned;
+    }
   }
   return extractTitle(window.location.pathname);
 }
