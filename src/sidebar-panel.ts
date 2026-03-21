@@ -3,7 +3,7 @@ import { formatRelativeTime } from './relative-time';
 import { escapeHtml } from './html-escape';
 import './styles.css';
 
-const PANEL_ID = 'grw-recently-viewed-panel';
+const MODAL_ID = 'grw-recently-viewed-modal';
 
 function safeDecodeURI(seg: string): string {
   try {
@@ -55,43 +55,24 @@ function renderItem(item: ViewedPage): string {
   `;
 }
 
-export function renderPanel(): string {
+export function renderBody(): string {
   const history = getHistory();
 
-  const headerHtml = `
-    <div class="grw-sidebar-content-header py-4 d-flex">
-      <h3 class="fs-6 fw-bold mb-0 text-nowrap">閲覧履歴</h3>
-      <button type="button" class="btn btn-sm ms-auto py-0 grw-btn-clear-history" title="履歴をクリア">
-        <span class="material-symbols-outlined">delete_sweep</span>
-      </button>
-    </div>
-  `;
-
   if (history.length === 0) {
-    return `
-      <div class="px-3">
-        ${headerHtml}
-        <div class="grw-recently-viewed-empty">閲覧履歴はありません</div>
-      </div>
-    `;
+    return '<div class="grw-recently-viewed-empty">閲覧履歴はありません</div>';
   }
 
   const listHtml = history.map(renderItem).join('');
-
   return `
-    <div class="px-3">
-      ${headerHtml}
-      <div class="grw-recent-changes">
-        <ul class="list-group list-group-flush">
-          ${listHtml}
-        </ul>
-      </div>
+    <div class="grw-recent-changes">
+      <ul class="list-group list-group-flush">
+        ${listHtml}
+      </ul>
     </div>
   `;
 }
 
 function navigateGrowiStyle(path: string): void {
-  // Try Next.js router for SPA navigation (Growi uses Next.js)
   try {
     const nextRouter = (window as any).next?.router;
     if (nextRouter && typeof nextRouter.push === 'function') {
@@ -101,72 +82,83 @@ function navigateGrowiStyle(path: string): void {
   } catch {
     // fallback below
   }
-
-  // Fallback: standard navigation
   window.location.href = path;
 }
 
-function getOrCreatePanel(): HTMLElement {
-  let panel = document.getElementById(PANEL_ID);
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = PANEL_ID;
-    panel.className = 'grw-recently-viewed-panel d-none';
-    panel.style.cssText = 'height:100%;overflow-y:auto;';
+function getOrCreateModal(): HTMLElement {
+  let modal = document.getElementById(MODAL_ID);
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = MODAL_ID;
+    modal.className = 'grw-rv-modal-backdrop';
 
-    // Insert as sibling of .grw-sidebar-contents inside the scrollable area
-    const sidebarContents = document.querySelector('.grw-sidebar-contents');
-    if (sidebarContents && sidebarContents.parentElement) {
-      sidebarContents.parentElement.appendChild(panel);
-    }
+    modal.innerHTML = `
+      <div class="grw-rv-modal">
+        <div class="grw-rv-modal-header">
+          <h5 class="fw-bold mb-0">閲覧履歴</h5>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-outline-secondary grw-btn-clear-history" title="履歴をクリア">
+              <span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle">delete_sweep</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary grw-rv-modal-close" title="閉じる">
+              <span class="material-symbols-outlined" style="font-size:18px;vertical-align:middle">close</span>
+            </button>
+          </div>
+        </div>
+        <div class="grw-rv-modal-body"></div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
   }
-  return panel;
+  return modal;
 }
 
-export function showPanel(): void {
-  const panel = getOrCreatePanel();
-  const sidebarContents = document.querySelector('.grw-sidebar-contents');
+export function openModal(): void {
+  const modal = getOrCreateModal();
+  const body = modal.querySelector('.grw-rv-modal-body')!;
+  body.innerHTML = renderBody();
 
-  // Render content
-  panel.innerHTML = renderPanel();
+  modal.classList.add('active');
 
-  // Show our panel, hide Growi's panel
-  panel.classList.remove('d-none');
-  if (sidebarContents) {
-    sidebarContents.classList.add('d-none');
-  }
-
-  // Event delegation for all interactions
-  panel.onclick = (e) => {
+  modal.onclick = (e) => {
     const target = e.target as HTMLElement;
 
-    // Handle clear button
-    if (target.closest('.grw-btn-clear-history')) {
-      clearHistory();
-      showPanel(); // refresh
+    // Close on backdrop click
+    if (target === modal) {
+      closeModal();
       return;
     }
 
-    // Handle navigation links
+    // Close button
+    if (target.closest('.grw-rv-modal-close')) {
+      closeModal();
+      return;
+    }
+
+    // Clear history
+    if (target.closest('.grw-btn-clear-history')) {
+      clearHistory();
+      body.innerHTML = renderBody();
+      return;
+    }
+
+    // Navigation links
     const link = target.closest('.grw-rv-link') as HTMLElement | null;
     if (link) {
       e.preventDefault();
       const href = link.getAttribute('data-rv-href');
       if (href) {
+        closeModal();
         navigateGrowiStyle(href);
       }
     }
   };
 }
 
-export function hidePanel(): void {
-  const panel = document.getElementById(PANEL_ID);
-  const sidebarContents = document.querySelector('.grw-sidebar-contents');
-
-  if (panel) {
-    panel.classList.add('d-none');
-  }
-  if (sidebarContents) {
-    sidebarContents.classList.remove('d-none');
+export function closeModal(): void {
+  const modal = document.getElementById(MODAL_ID);
+  if (modal) {
+    modal.classList.remove('active');
   }
 }

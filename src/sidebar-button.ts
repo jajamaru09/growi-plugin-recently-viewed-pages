@@ -9,8 +9,7 @@ function createButton(): HTMLButtonElement {
   btn.id = BUTTON_ID;
   btn.innerHTML = '<div class="position-relative"><span class="material-symbols-outlined">history</span></div>';
 
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
+  btn.addEventListener('click', () => {
     onClickHandler?.();
   });
 
@@ -31,19 +30,4 @@ export function ensureSidebarButton(onClick: () => void): HTMLButtonElement | nu
   const btn = createButton();
   notificationBtn.insertAdjacentElement('afterend', btn);
   return btn;
-}
-
-export function setButtonActive(active: boolean): void {
-  const btn = document.getElementById(BUTTON_ID);
-  if (!btn) return;
-
-  if (active) {
-    const container = btn.parentElement;
-    if (container) {
-      container.querySelectorAll('button.btn').forEach((b) => b.classList.remove('active'));
-    }
-    btn.classList.add('active');
-  } else {
-    btn.classList.remove('active');
-  }
 }
