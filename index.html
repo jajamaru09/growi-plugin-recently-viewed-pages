@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Growi Plugin Dev - Recently Viewed Pages</title>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    body { display: flex; height: 100vh; margin: 0; background: #f5f5f5; }
+    .grw-sidebar-nav { width: 64px; background: #2a2a2a; display: flex; flex-direction: column; }
+    .grw-sidebar-nav .btn-primary { background: #444; border: none; color: #ccc; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
+    .grw-sidebar-nav .btn-primary.active { background: #666; color: #fff; }
+    .sidebar-contents-container { width: 320px; background: #fff; border-right: 1px solid #ddd; overflow-y: auto; }
+    .grw-sidebar-contents { min-height: 100%; }
+    .main-content { flex: 1; padding: 2rem; }
+  </style>
+</head>
+<body>
+  <fieldset class="flex-expand-horiz border-0 p-0 m-0 border-top">
+    <div class="grw-sidebar-nav">
+      <div class="grw-sidebar-nav-primary-container">
+        <div class="PrimaryItems_grw-primary-items__MP17f mt-1">
+          <button type="button" class="btn btn-primary m-1 rounded" id="page-tree">
+            <div class="position-relative"><span class="material-symbols-outlined">list</span></div>
+          </button>
+          <button type="button" class="btn btn-primary m-1 rounded active" id="recent-changes">
+            <div class="position-relative"><span class="material-symbols-outlined">update</span></div>
+          </button>
+          <button type="button" class="btn btn-primary m-1 rounded" id="bookmarks">
+            <div class="position-relative"><span class="material-symbols-outlined">bookmarks</span></div>
+          </button>
+          <button type="button" class="btn btn-primary m-1 rounded" id="in-app-notification">
+            <div class="position-relative"><span class="material-symbols-outlined">notifications</span></div>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="sidebar-contents-container flex-grow-1 overflow-hidden">
+      <div class="grw-sidebar-contents" data-testid="grw-sidebar-contents">
+        <div class="px-3">
+          <div class="grw-sidebar-content-header py-4 d-flex">
+            <h3 class="fs-6 fw-bold mb-0">最新の変更</h3>
+          </div>
+          <p class="text-muted">（モックコンテンツ）</p>
+        </div>
+      </div>
+    </div>
+  </fieldset>
+  <div class="main-content">
+    <h1>Dev Mock Page</h1>
+    <p>サイドバーの <code>history</code> ボタンをクリックしてテストしてください。</p>
+  </div>
+  <script>
+    // Simulate some page view history in localStorage
+    const mockHistory = [
+      { path: '/999_その他/Claudeコラム/20260321_月齢', title: '20260321_月齢', viewedAt: Date.now() - 60000 },
+      { path: '/004_プログラミング手法/008_JavaScript/npmパッケージのセキュリティ対策', title: 'npmパッケージのセキュリティ対策', viewedAt: Date.now() - 3600000 },
+      { path: '/テスト用', title: 'テスト用', viewedAt: Date.now() - 86400000 },
+    ];
+    if (!localStorage.getItem('growi-recently-viewed-pages')) {
+      localStorage.setItem('growi-recently-viewed-pages', JSON.stringify(mockHistory));
+    }
+  </script>
+  <script type="module">
+    import './client-entry.tsx';
+    // Simulate Growi calling activate
+    setTimeout(() => {
+      const activator = window.pluginActivators?.['growi-plugin-recently-viewed-pages'];
+      if (activator) activator.activate();
+    }, 100);
+  </script>
+</body>
+</html>
