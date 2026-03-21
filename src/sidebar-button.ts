@@ -1,7 +1,6 @@
 const BUTTON_ID = 'recently-viewed';
 
 let onClickHandler: (() => void) | null = null;
-let buttonObserver: MutationObserver | null = null;
 
 function createButton(): HTMLButtonElement {
   const btn = document.createElement('button');
@@ -18,39 +17,19 @@ function createButton(): HTMLButtonElement {
   return btn;
 }
 
-function ensureButtonExists(): void {
-  if (document.getElementById(BUTTON_ID)) return;
-
-  const notificationBtn = document.getElementById('in-app-notification');
-  if (!notificationBtn) return;
-
-  const btn = createButton();
-  notificationBtn.insertAdjacentElement('afterend', btn);
-}
-
-export function injectSidebarButton(onClick: () => void): HTMLButtonElement | null {
+export function ensureSidebarButton(onClick: () => void): HTMLButtonElement | null {
   onClickHandler = onClick;
 
+  // Already exists
+  const existing = document.getElementById(BUTTON_ID) as HTMLButtonElement | null;
+  if (existing) return existing;
+
+  // Find anchor point
   const notificationBtn = document.getElementById('in-app-notification');
   if (!notificationBtn) return null;
 
-  // Avoid duplicate injection
-  if (document.getElementById(BUTTON_ID)) {
-    return document.getElementById(BUTTON_ID) as HTMLButtonElement;
-  }
-
   const btn = createButton();
   notificationBtn.insertAdjacentElement('afterend', btn);
-
-  // Watch for React re-renders that might remove our button
-  const navContainer = notificationBtn.closest('.grw-sidebar-nav-primary-container');
-  if (navContainer && !buttonObserver) {
-    buttonObserver = new MutationObserver(() => {
-      ensureButtonExists();
-    });
-    buttonObserver.observe(navContainer, { childList: true, subtree: true });
-  }
-
   return btn;
 }
 
@@ -59,7 +38,6 @@ export function setButtonActive(active: boolean): void {
   if (!btn) return;
 
   if (active) {
-    // Remove active from all sibling nav buttons
     const container = btn.parentElement;
     if (container) {
       container.querySelectorAll('button.btn').forEach((b) => b.classList.remove('active'));
@@ -67,12 +45,5 @@ export function setButtonActive(active: boolean): void {
     btn.classList.add('active');
   } else {
     btn.classList.remove('active');
-  }
-}
-
-export function cleanupButtonObserver(): void {
-  if (buttonObserver) {
-    buttonObserver.disconnect();
-    buttonObserver = null;
   }
 }
