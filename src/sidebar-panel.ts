@@ -156,7 +156,7 @@ export function openModal(): void {
   };
 }
 
-export function closeModal(): void {
+function closeModal(): void {
   const modal = document.getElementById(MODAL_ID);
   if (modal) {
     modal.classList.remove('active');
