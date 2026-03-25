@@ -1,5 +1,5 @@
 export const STORAGE_KEY = 'growi-recently-viewed-pages';
-export const MAX_ITEMS = 30;
+export const MAX_ITEMS = 100;
 
 export type ViewedPage = {
   path: string;
