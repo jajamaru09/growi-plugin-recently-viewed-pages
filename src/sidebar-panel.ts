@@ -4,6 +4,7 @@ import { escapeHtml } from './html-escape';
 import './styles.css';
 
 const MODAL_ID = 'grw-recently-viewed-modal';
+const CONFIRM_MODAL_ID = 'grw-recently-viewed-confirm-modal';
 
 function safeDecodeURI(seg: string): string {
   try {
@@ -226,9 +227,11 @@ export function openModal(): void {
 
     // Clear history
     if (target.closest('.grw-btn-clear-history')) {
-      clearHistory();
-      const query = searchInput ? searchInput.value : '';
-      body.innerHTML = renderBody(query);
+      showConfirmModal(() => {
+        clearHistory();
+        const query = searchInput ? searchInput.value : '';
+        body.innerHTML = renderBody(query);
+      });
       return;
     }
 
@@ -269,6 +272,55 @@ export function openModal(): void {
     // Click inside modal but outside dropdown: hide dropdown
     if (!target.closest('.grw-rv-search-history-dropdown') && !target.closest('.grw-rv-search-input')) {
       hideDropdown();
+    }
+  };
+}
+
+function showConfirmModal(onConfirm: () => void): void {
+  let confirmModal = document.getElementById(CONFIRM_MODAL_ID);
+  if (!confirmModal) {
+    confirmModal = document.createElement('div');
+    confirmModal.id = CONFIRM_MODAL_ID;
+    confirmModal.className = 'grw-rv-confirm-modal-backdrop';
+
+    confirmModal.innerHTML = `
+      <div class="grw-rv-confirm-modal">
+        <div class="grw-rv-confirm-modal-header">
+          <h5 class="fw-bold mb-0">確認</h5>
+        </div>
+        <div class="grw-rv-confirm-modal-body">
+          <p class="mb-3">履歴を削除しますか？</p>
+          <div class="d-flex gap-2 justify-content-end">
+            <button type="button" class="btn btn-secondary grw-confirm-cancel">キャンセル</button>
+            <button type="button" class="btn btn-danger grw-confirm-ok">OK</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(confirmModal);
+  }
+
+  confirmModal.classList.add('active');
+
+  const handleConfirm = () => {
+    confirmModal!.classList.remove('active');
+    onConfirm();
+  };
+
+  const handleCancel = () => {
+    confirmModal!.classList.remove('active');
+  };
+
+  confirmModal.onclick = (e) => {
+    const target = e.target as HTMLElement;
+
+    if (target.closest('.grw-confirm-ok')) {
+      handleConfirm();
+    } else if (target.closest('.grw-confirm-cancel')) {
+      handleCancel();
+    } else if (target === confirmModal) {
+      handleCancel();
     }
   };
 }

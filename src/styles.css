@@ -145,3 +145,38 @@
 .grw-rv-search-history-remove:hover {
   color: var(--bs-danger, #dc3545);
 }
+
+/* Confirmation Modal */
+.grw-rv-confirm-modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1060;
+  justify-content: center;
+  align-items: center;
+}
+
+.grw-rv-confirm-modal-backdrop.active {
+  display: flex;
+}
+
+.grw-rv-confirm-modal {
+  background: var(--bs-body-bg, #fff);
+  color: var(--bs-body-color, #212529);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+}
+
+.grw-rv-confirm-modal-header {
+  padding: 16px 20px 8px;
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.grw-rv-confirm-modal-body {
+  padding: 16px 20px;
+}
