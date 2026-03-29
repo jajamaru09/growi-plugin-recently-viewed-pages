@@ -189,14 +189,34 @@ export function openModal(): void {
     };
   }
 
-  modal.onclick = (e) => {
-    const target = e.target as HTMLElement;
+  let isMouseDownOnBackdrop = false;
 
-    // Close on backdrop click
+  modal.onmousedown = (e) => {
+    const target = e.target as HTMLElement;
+    
+    // Track mousedown on backdrop for proper click detection
     if (target === modal) {
+      isMouseDownOnBackdrop = true;
+    } else {
+      isMouseDownOnBackdrop = false;
+    }
+  };
+
+  modal.onmouseup = (e) => {
+    const target = e.target as HTMLElement;
+    
+    // Close on proper backdrop click (mousedown and mouseup both on backdrop)
+    if (target === modal && isMouseDownOnBackdrop) {
       closeModal();
       return;
     }
+    
+    // Reset the flag
+    isMouseDownOnBackdrop = false;
+  };
+
+  modal.onclick = (e) => {
+    const target = e.target as HTMLElement;
 
     // Close button
     if (target.closest('.grw-rv-modal-close')) {
