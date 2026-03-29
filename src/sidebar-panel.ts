@@ -150,13 +150,6 @@ export function openModal(): void {
 
   modal.classList.add('active');
 
-  // Focus on search input when modal opens
-  setTimeout(() => {
-    if (searchInput) {
-      searchInput.focus();
-    }
-  }, 100);
-
   function showDropdown(): void {
     hideDropdown();
     if (searchInput && searchInput.value.trim() !== '') return;
