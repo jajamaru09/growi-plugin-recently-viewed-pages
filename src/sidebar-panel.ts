@@ -45,14 +45,26 @@ function renderItem(item: ViewedPage): string {
   `;
 }
 
-export function renderBody(): string {
+export function renderBody(searchQuery: string = ''): string {
   const history = getHistory();
 
   if (history.length === 0) {
     return '<div class="grw-recently-viewed-empty">閲覧履歴はありません</div>';
   }
 
-  const listHtml = history.map(renderItem).join('');
+  // Filter items based on search query
+  const filteredHistory = searchQuery.trim() 
+    ? history.filter(item => 
+        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        item.path.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : history;
+
+  if (filteredHistory.length === 0) {
+    return '<div class="grw-recently-viewed-empty">該当する履歴が見つかりません</div>';
+  }
+
+  const listHtml = filteredHistory.map(renderItem).join('');
   return `
     <div class="grw-recent-changes">
       <ul class="list-group list-group-flush">
@@ -95,6 +107,9 @@ function getOrCreateModal(): HTMLElement {
             </button>
           </div>
         </div>
+        <div class="grw-rv-search-container">
+          <input type="text" class="grw-rv-search-input" placeholder="ページを検索..." autocomplete="off">
+        </div>
         <div class="grw-rv-modal-body"></div>
       </div>
     `;
@@ -107,9 +122,35 @@ function getOrCreateModal(): HTMLElement {
 export function openModal(): void {
   const modal = getOrCreateModal();
   const body = modal.querySelector('.grw-rv-modal-body')!;
+  const searchInput = modal.querySelector('.grw-rv-search-input') as HTMLInputElement;
+  
+  // Initialize the list
   body.innerHTML = renderBody();
 
+  // Clear any previous search value
+  if (searchInput) {
+    searchInput.value = '';
+  }
+
   modal.classList.add('active');
+
+  // Focus on search input when modal opens
+  setTimeout(() => {
+    if (searchInput) {
+      searchInput.focus();
+    }
+  }, 100);
+
+  // Handle search input changes
+  const handleSearch = () => {
+    const query = searchInput ? searchInput.value : '';
+    body.innerHTML = renderBody(query);
+  };
+
+  // Real-time filtering on input
+  if (searchInput) {
+    searchInput.oninput = handleSearch;
+  }
 
   modal.onclick = (e) => {
     const target = e.target as HTMLElement;
@@ -129,7 +170,8 @@ export function openModal(): void {
     // Clear history
     if (target.closest('.grw-btn-clear-history')) {
       clearHistory();
-      body.innerHTML = renderBody();
+      const query = searchInput ? searchInput.value : '';
+      body.innerHTML = renderBody(query);
       return;
     }
 
