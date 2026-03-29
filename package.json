@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "GROWI plugin that displays recently viewed pages in the sidebar.",
   "type": "module",
-  "keywords": ["growi", "growi-plugin"],
+  "keywords": [
+    "growi",
+    "growi-plugin"
+  ],
   "license": "MIT",
   "scripts": {
     "dev": "vite --host",
@@ -20,6 +23,8 @@
   },
   "growiPlugin": {
     "schemaVersion": "4",
-    "types": ["script"]
+    "types": [
+      "script"
+    ]
   }
 }
