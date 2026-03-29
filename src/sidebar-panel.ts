@@ -1,4 +1,4 @@
-import { getHistory, clearHistory, type ViewedPage } from './storage';
+import { getHistory, clearHistory, getSearchHistory, recordSearchKeyword, removeSearchKeyword, type ViewedPage } from './storage';
 import { formatRelativeTime } from './relative-time';
 import { escapeHtml } from './html-escape';
 import './styles.css';
@@ -53,10 +53,11 @@ export function renderBody(searchQuery: string = ''): string {
   }
 
   // Filter items based on search query
-  const filteredHistory = searchQuery.trim() 
-    ? history.filter(item => 
-        item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.path.toLowerCase().includes(searchQuery.toLowerCase())
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const filteredHistory = trimmedQuery
+    ? history.filter(item =>
+        item.title.toLowerCase().includes(trimmedQuery) ||
+        item.path.toLowerCase().includes(trimmedQuery)
       )
     : history;
 
@@ -85,6 +86,18 @@ function navigateGrowiStyle(path: string): void {
     // fallback below
   }
   window.location.href = path;
+}
+
+function renderSearchHistoryDropdown(): string {
+  const keywords = getSearchHistory();
+  if (keywords.length === 0) return '';
+  const items = keywords.map((kw) =>
+    `<div class="grw-rv-search-history-item">
+      <span class="grw-rv-search-history-keyword">${escapeHtml(kw)}</span>
+      <button type="button" class="grw-rv-search-history-remove" data-keyword="${escapeHtml(kw)}" title="削除">✕</button>
+    </div>`
+  ).join('');
+  return `<div class="grw-rv-search-history-dropdown">${items}</div>`;
 }
 
 function getOrCreateModal(): HTMLElement {
@@ -123,14 +136,17 @@ export function openModal(): void {
   const modal = getOrCreateModal();
   const body = modal.querySelector('.grw-rv-modal-body')!;
   const searchInput = modal.querySelector('.grw-rv-search-input') as HTMLInputElement;
-  
+  const searchContainer = modal.querySelector('.grw-rv-search-container')!;
+
   // Initialize the list
   body.innerHTML = renderBody();
 
-  // Clear any previous search value
+  // Clear any previous search value and dropdown
   if (searchInput) {
     searchInput.value = '';
   }
+  const existingDropdown = searchContainer.querySelector('.grw-rv-search-history-dropdown');
+  if (existingDropdown) existingDropdown.remove();
 
   modal.classList.add('active');
 
@@ -141,15 +157,48 @@ export function openModal(): void {
     }
   }, 100);
 
+  function showDropdown(): void {
+    hideDropdown();
+    if (searchInput && searchInput.value.trim() !== '') return;
+    const html = renderSearchHistoryDropdown();
+    if (!html) return;
+    searchContainer.insertAdjacentHTML('beforeend', html);
+  }
+
+  function hideDropdown(): void {
+    const dd = searchContainer.querySelector('.grw-rv-search-history-dropdown');
+    if (dd) dd.remove();
+  }
+
   // Handle search input changes
   const handleSearch = () => {
     const query = searchInput ? searchInput.value : '';
+    const history = getHistory();
+    const trimmed = query.trim();
+
     body.innerHTML = renderBody(query);
+    hideDropdown();
+
+    // Save keyword when filtering actually narrows results
+    if (trimmed) {
+      const filteredCount = history.filter(item =>
+        item.title.toLowerCase().includes(trimmed.toLowerCase()) ||
+        item.path.toLowerCase().includes(trimmed.toLowerCase())
+      ).length;
+      if (filteredCount < history.length && filteredCount > 0) {
+        recordSearchKeyword(trimmed);
+      }
+    }
   };
 
   // Real-time filtering on input
   if (searchInput) {
     searchInput.oninput = handleSearch;
+    searchInput.onfocus = () => {
+      if (searchInput.value.trim() === '') {
+        showDropdown();
+      }
+    };
   }
 
   modal.onclick = (e) => {
@@ -175,6 +224,29 @@ export function openModal(): void {
       return;
     }
 
+    // Search history: remove keyword
+    const removeBtn = target.closest('.grw-rv-search-history-remove') as HTMLElement | null;
+    if (removeBtn) {
+      const keyword = removeBtn.getAttribute('data-keyword');
+      if (keyword) {
+        removeSearchKeyword(keyword);
+        showDropdown();
+      }
+      return;
+    }
+
+    // Search history: select keyword
+    const historyItem = target.closest('.grw-rv-search-history-item') as HTMLElement | null;
+    if (historyItem) {
+      const keywordEl = historyItem.querySelector('.grw-rv-search-history-keyword');
+      if (keywordEl && searchInput) {
+        searchInput.value = keywordEl.textContent || '';
+        hideDropdown();
+        body.innerHTML = renderBody(searchInput.value);
+      }
+      return;
+    }
+
     // Navigation links
     const link = target.closest('.grw-rv-link') as HTMLElement | null;
     if (link) {
@@ -184,6 +256,11 @@ export function openModal(): void {
         closeModal();
         navigateGrowiStyle(href);
       }
+    }
+
+    // Click inside modal but outside dropdown: hide dropdown
+    if (!target.closest('.grw-rv-search-history-dropdown') && !target.closest('.grw-rv-search-input')) {
+      hideDropdown();
     }
   };
 }
