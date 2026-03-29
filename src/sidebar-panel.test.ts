@@ -32,4 +32,57 @@ describe('sidebar-panel', () => {
     expect(html).not.toContain('<img onerror');
     expect(html).toContain('&lt;img onerror');
   });
+
+  describe('search filtering', () => {
+    beforeEach(() => {
+      // Set up test data
+      recordPageView('/react/components', 'React Component');
+      recordPageView('/vue/components', 'Vue Component');
+      recordPageView('/docs/api', 'API Documentation');
+    });
+
+    it('returns all items when search query is empty', () => {
+      const html = renderBody('');
+      expect(html).toContain('React Component');
+      expect(html).toContain('Vue Component');
+      expect(html).toContain('API Documentation');
+    });
+
+    it('filters items by title', () => {
+      const html = renderBody('react');
+      expect(html).toContain('React Component');
+      expect(html).not.toContain('Vue Component');
+      expect(html).not.toContain('API Documentation');
+    });
+
+    it('filters items by path', () => {
+      const html = renderBody('docs');
+      expect(html).not.toContain('React Component');
+      expect(html).not.toContain('Vue Component');
+      expect(html).toContain('API Documentation');
+    });
+
+    it('is case insensitive', () => {
+      const html = renderBody('REACT');
+      expect(html).toContain('React Component');
+    });
+
+    it('shows no results message when no items match', () => {
+      const html = renderBody('nonexistent');
+      expect(html).toContain('該当する履歴が見つかりません');
+      expect(html).not.toContain('React Component');
+    });
+
+    it('trims whitespace from search query', () => {
+      const html = renderBody('  react  ');
+      expect(html).toContain('React Component');
+    });
+
+    it('matches partial words in title and path', () => {
+      const html = renderBody('comp');
+      expect(html).toContain('React Component');
+      expect(html).toContain('Vue Component');
+      expect(html).not.toContain('API Documentation');
+    });
+  });
 });

@@ -1,4 +1,4 @@
-import { getHistory, clearHistory, type ViewedPage } from './storage';
+import { getHistory, clearHistory, getSearchHistory, recordSearchKeyword, removeSearchKeyword, type ViewedPage } from './storage';
 import { formatRelativeTime } from './relative-time';
 import { escapeHtml } from './html-escape';
 import './styles.css';
@@ -45,14 +45,27 @@ function renderItem(item: ViewedPage): string {
   `;
 }
 
-export function renderBody(): string {
+export function renderBody(searchQuery: string = ''): string {
   const history = getHistory();
 
   if (history.length === 0) {
     return '<div class="grw-recently-viewed-empty">閲覧履歴はありません</div>';
   }
 
-  const listHtml = history.map(renderItem).join('');
+  // Filter items based on search query
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const filteredHistory = trimmedQuery
+    ? history.filter(item =>
+        item.title.toLowerCase().includes(trimmedQuery) ||
+        item.path.toLowerCase().includes(trimmedQuery)
+      )
+    : history;
+
+  if (filteredHistory.length === 0) {
+    return '<div class="grw-recently-viewed-empty">該当する履歴が見つかりません</div>';
+  }
+
+  const listHtml = filteredHistory.map(renderItem).join('');
   return `
     <div class="grw-recent-changes">
       <ul class="list-group list-group-flush">
@@ -75,6 +88,18 @@ function navigateGrowiStyle(path: string): void {
   window.location.href = path;
 }
 
+function renderSearchHistoryDropdown(): string {
+  const keywords = getSearchHistory();
+  if (keywords.length === 0) return '';
+  const items = keywords.map((kw) =>
+    `<div class="grw-rv-search-history-item">
+      <span class="grw-rv-search-history-keyword">${escapeHtml(kw)}</span>
+      <button type="button" class="grw-rv-search-history-remove" data-keyword="${escapeHtml(kw)}" title="削除">✕</button>
+    </div>`
+  ).join('');
+  return `<div class="grw-rv-search-history-dropdown">${items}</div>`;
+}
+
 function getOrCreateModal(): HTMLElement {
   let modal = document.getElementById(MODAL_ID);
   if (!modal) {
@@ -95,6 +120,9 @@ function getOrCreateModal(): HTMLElement {
             </button>
           </div>
         </div>
+        <div class="grw-rv-search-container">
+          <input type="text" class="grw-rv-search-input" placeholder="ページを検索..." autocomplete="off">
+        </div>
         <div class="grw-rv-modal-body"></div>
       </div>
     `;
@@ -107,9 +135,59 @@ function getOrCreateModal(): HTMLElement {
 export function openModal(): void {
   const modal = getOrCreateModal();
   const body = modal.querySelector('.grw-rv-modal-body')!;
+  const searchInput = modal.querySelector('.grw-rv-search-input') as HTMLInputElement;
+  const searchContainer = modal.querySelector('.grw-rv-search-container')!;
+
+  // Initialize the list
   body.innerHTML = renderBody();
 
+  // Clear any previous search value and dropdown
+  if (searchInput) {
+    searchInput.value = '';
+  }
+  const existingDropdown = searchContainer.querySelector('.grw-rv-search-history-dropdown');
+  if (existingDropdown) existingDropdown.remove();
+
   modal.classList.add('active');
+
+  function showDropdown(): void {
+    hideDropdown();
+    if (searchInput && searchInput.value.trim() !== '') return;
+    const html = renderSearchHistoryDropdown();
+    if (!html) return;
+    searchContainer.insertAdjacentHTML('beforeend', html);
+  }
+
+  function hideDropdown(): void {
+    const dd = searchContainer.querySelector('.grw-rv-search-history-dropdown');
+    if (dd) dd.remove();
+  }
+
+  // Handle search input changes
+  const handleSearch = () => {
+    const query = searchInput ? searchInput.value : '';
+    body.innerHTML = renderBody(query);
+    hideDropdown();
+  };
+
+  // Real-time filtering on input
+  if (searchInput) {
+    searchInput.oninput = handleSearch;
+    searchInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const trimmed = searchInput.value.trim();
+        if (trimmed) {
+          recordSearchKeyword(trimmed);
+        }
+      }
+    };
+    searchInput.onfocus = () => {
+      if (searchInput.value.trim() === '') {
+        showDropdown();
+      }
+    };
+  }
 
   modal.onclick = (e) => {
     const target = e.target as HTMLElement;
@@ -129,7 +207,31 @@ export function openModal(): void {
     // Clear history
     if (target.closest('.grw-btn-clear-history')) {
       clearHistory();
-      body.innerHTML = renderBody();
+      const query = searchInput ? searchInput.value : '';
+      body.innerHTML = renderBody(query);
+      return;
+    }
+
+    // Search history: remove keyword
+    const removeBtn = target.closest('.grw-rv-search-history-remove') as HTMLElement | null;
+    if (removeBtn) {
+      const keyword = removeBtn.getAttribute('data-keyword');
+      if (keyword) {
+        removeSearchKeyword(keyword);
+        showDropdown();
+      }
+      return;
+    }
+
+    // Search history: select keyword
+    const historyItem = target.closest('.grw-rv-search-history-item') as HTMLElement | null;
+    if (historyItem) {
+      const keywordEl = historyItem.querySelector('.grw-rv-search-history-keyword');
+      if (keywordEl && searchInput) {
+        searchInput.value = keywordEl.textContent || '';
+        hideDropdown();
+        body.innerHTML = renderBody(searchInput.value);
+      }
       return;
     }
 
@@ -142,6 +244,11 @@ export function openModal(): void {
         closeModal();
         navigateGrowiStyle(href);
       }
+    }
+
+    // Click inside modal but outside dropdown: hide dropdown
+    if (!target.closest('.grw-rv-search-history-dropdown') && !target.closest('.grw-rv-search-input')) {
+      hideDropdown();
     }
   };
 }
