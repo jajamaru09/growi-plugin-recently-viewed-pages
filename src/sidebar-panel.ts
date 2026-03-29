@@ -173,27 +173,22 @@ export function openModal(): void {
   // Handle search input changes
   const handleSearch = () => {
     const query = searchInput ? searchInput.value : '';
-    const history = getHistory();
-    const trimmed = query.trim();
-
     body.innerHTML = renderBody(query);
     hideDropdown();
-
-    // Save keyword when filtering actually narrows results
-    if (trimmed) {
-      const filteredCount = history.filter(item =>
-        item.title.toLowerCase().includes(trimmed.toLowerCase()) ||
-        item.path.toLowerCase().includes(trimmed.toLowerCase())
-      ).length;
-      if (filteredCount < history.length && filteredCount > 0) {
-        recordSearchKeyword(trimmed);
-      }
-    }
   };
 
   // Real-time filtering on input
   if (searchInput) {
     searchInput.oninput = handleSearch;
+    searchInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const trimmed = searchInput.value.trim();
+        if (trimmed) {
+          recordSearchKeyword(trimmed);
+        }
+      }
+    };
     searchInput.onfocus = () => {
       if (searchInput.value.trim() === '') {
         showDropdown();
